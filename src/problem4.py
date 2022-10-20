@@ -80,8 +80,9 @@ if __name__ == "__main__":
         te_X = data_dict['te_X']
         te_y = data_dict['te_y']
 
-        for kernel in [linear_kernel, Gaussian_kernel]:
-        # for kernel in [Gaussian_kernel]:
+        # for kernel in [linear_kernel, Gaussian_kernel]:
+        # for kernel in [linear_kernel]:
+        for kernel in [Gaussian_kernel]:
 
             print ('========using kernel {}========'.format(kernel.__name__))
             kwargs = {'distribution': dist,

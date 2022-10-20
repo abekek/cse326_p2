@@ -80,11 +80,11 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
         num_changed_alphas = 0
         passes = 0
         print('iteration: ', t)
-        while (num_changed_alphas > 0 or passes < max_passes):
+        while (num_changed_alphas == 0):
+            print('max_passes: ', max_passes)
             num_changed_alphas = 0
             print('passes: ', passes)
             for i in range(model.m):
-                print('i: ', i)
                 Ei = calculate_E(model, i)
                 if (model.train_y[0, i] * Ei < -tol and model.alpha[0, i] < model.C) or (model.train_y[0, i] * Ei > tol and model.alpha[0, i] > 0):
                     j = get_rnd_int(0, model.m, i)
@@ -103,47 +103,48 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
                     if L == H:
                         continue
                     eta = 2.0 * k12 - k11 - k22
-                    # if eta < 0:
-                    #     a2 = alpha_j_old - model.train_y[0, j] * (Ei - Ej) / eta
-                    #     if a2 < L:
-                    #         a2 = L
-                    #     elif a2 > H:
-                    #         a2 = H
-                    # else:
-                    #     f1 = model.train_y[0, i] * (Ei + model.b) - model.alpha[0, i] * k11 - model.train_y[0, j] * model.alpha[0, j] * k12
-                    #     f2 = model.train_y[0, j] * (Ej + model.b) - model.alpha[0, j] * k22 - model.train_y[0, i] * model.alpha[0, i] * k12
-                    #     L1 = model.alpha[0, i] + model.alpha[0, j] - H
-                    #     H1 = model.alpha[0, i] + model.alpha[0, j] - L
-                    #     Lobj = L1 * f1 + L * f2 + 0.5 * L1 * L1 * k11 + 0.5 * L * L * k22 + L * L1 * k12
-                    #     Hobj = H1 * f1 + H * f2 + 0.5 * H1 * H1 * k11 + 0.5 * H * H * k22 + H * H1 * k12
-                    #     if Lobj < Hobj - tol:
-                    #         a2 = L
-                    #     elif Lobj > Hobj + tol:
-                    #         a2 = H
-                    #     else:
-                    #         a2 = model.alpha[0, j]
-                    if eta >= 0:
+                    if eta < 0:
+                        a2 = alpha_j_old - model.train_y[0, j] * (Ei - Ej) / eta
+                        if a2 < L:
+                            a2 = L
+                        elif a2 > H:
+                            a2 = H
+                    else:
+                        f1 = model.train_y[0, i] * (Ei + model.b) - model.alpha[0, i] * k11 - model.train_y[0, j] * model.alpha[0, j] * k12
+                        f2 = model.train_y[0, j] * (Ej + model.b) - model.alpha[0, j] * k22 - model.train_y[0, i] * model.alpha[0, i] * k12
+                        L1 = model.alpha[0, i] + model.alpha[0, j] - H
+                        H1 = model.alpha[0, i] + model.alpha[0, j] - L
+                        Lobj = L1 * f1 + L * f2 + 0.5 * L1 * L1 * k11 + 0.5 * L * L * k22 + L * L1 * k12
+                        Hobj = H1 * f1 + H * f2 + 0.5 * H1 * H1 * k11 + 0.5 * H * H * k22 + H * H1 * k12
+                        if Lobj < Hobj - tol:
+                            a2 = L
+                        elif Lobj > Hobj + tol:
+                            a2 = H
+                        else:
+                            a2 = model.alpha[0, j]
+                    if a2 < 1e-8:
+                        a2 = 0
+                    elif a2 > model.C - 1e-8:
+                        a2 = model.C
+                    if abs(a2 - alpha_j_old) < tol * (a2 + alpha_j_old + tol):
                         continue
-                    model.alpha[0, j] -= model.train_y[0, j] * (Ei - Ej) / eta
-                    model.alpha[0, j] = min(H, model.alpha[0, j])
-                    model.alpha[0, j] = max(L, model.alpha[0, j])
-                    if abs(model.alpha[0, j] - alpha_j_old) < tol:
-                        model.alpha[0, j] = alpha_j_old
-                        continue
-                    model.alpha[0, i] += model.train_y[0, i] * model.train_y[0, j] * (alpha_j_old - model.alpha[0, j])
-                    b1 = model.b - Ei - model.train_y[0, i] * (model.alpha[0, i] - alpha_i_old) * k11 - model.train_y[0, j] * (model.alpha[0, j] - alpha_j_old) * k12 + model.b
-                    b2 = model.b - Ej - model.train_y[0, j] * (model.alpha[0, j] - alpha_j_old) * k12 - model.train_y[0, i] * (model.alpha[0, i] - alpha_i_old) * k22 + model.b
-                    if 0 < model.alpha[0, i] and model.alpha[0, i] < model.C:
+                    a1 = alpha_i_old + model.train_y[0, i] * model.train_y[0, j] * (alpha_j_old - a2)
+                    b1 = model.b - Ei - model.train_y[0, i] * (a1 - alpha_i_old) * k11 - model.train_y[0, j] * (a2 - alpha_j_old) * k12
+                    b2 = model.b - Ej - model.train_y[0, i] * (a1 - alpha_i_old) * k12 - model.train_y[0, j] * (a2 - alpha_j_old) * k22
+                    if 0 < a1 < model.C:
                         model.b = b1
-                    elif 0 < model.alpha[0, j] and model.alpha[0, j] < model.C:
+                    elif 0 < a2 < model.C:
                         model.b = b2
                     else:
                         model.b = (b1 + b2) / 2.0
+                    model.alpha[0, i] = a1
+                    model.alpha[0, j] = a2
                     num_changed_alphas += 1
-            if num_changed_alphas == 0:
-                passes += 1
-            else:
-                passes = 0
+                    print('i: ', i)
+
+            passes += 1
+            if passes > max_passes:
+                break
 
         dual_objective = dual_objective_function(model.alpha, model.train_y, model.train_X, model.kernel_func, model.C)
         primal_objective = primal_objective_function(model.alpha, model.train_y, model.train_X, model.b, model.C, model.kernel_func, model.sigma)
