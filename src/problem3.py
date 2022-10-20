@@ -86,14 +86,11 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
             print('passes: ', passes)
             for i in range(model.m):
                 Ei = calculate_E(model, i)
-                if (model.train_y[0, i] * Ei < -tol and model.alpha[0, i] < model.C) or (model.train_y[0, i] * Ei > tol and model.alpha[0, i] > 0):
-                    j = get_rnd_int(0, model.m, i)
-                    Ej = calculate_E(model, j)
-                    alpha_i_old = model.alpha[0, i]
-                    alpha_j_old = model.alpha[0, j]
-                    k11 = model.kernel_func(model.train_X, model.train_X)[i, i]
-                    k12 = model.kernel_func(model.train_X, model.train_X)[i, j]
-                    k22 = model.kernel_func(model.train_X, model.train_X)[j, j]
+                j = get_rnd_int(0, model.m, i)
+                Ej = calculate_E(model, j)
+                rj = model.train_y[0, j] * Ej
+
+                if (rj < -tol and model.alpha[0, j] < model.C) or (rj > tol and model.alpha[0, j] > 0):
                     if model.train_y[0, i] != model.train_y[0, j]:
                         L = max(0, model.alpha[0, j] - model.alpha[0, i])
                         H = min(model.C, model.C + model.alpha[0, j] - model.alpha[0, i])
@@ -102,7 +99,21 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
                         H = min(model.C, model.alpha[0, j] + model.alpha[0, i])
                     if L == H:
                         continue
+                    
+                    if model.kernel_func.__name__ == 'linear_kernel':
+                        k11 = model.kernel_func(model.train_X, model.train_X)[i, i]
+                        k12 = model.kernel_func(model.train_X, model.train_X)[i, j]
+                        k22 = model.kernel_func(model.train_X, model.train_X)[j, j]
+                    elif model.kernel_func.__name__ == 'Gaussian_kernel':
+                        k11 = model.kernel_func(model.train_X, model.train_X, model.sigma)[i, i]
+                        k12 = model.kernel_func(model.train_X, model.train_X, model.sigma)[i, j]
+                        k22 = model.kernel_func(model.train_X, model.train_X, model.sigma)[j, j]
+                    
                     eta = 2.0 * k12 - k11 - k22
+
+                    alpha_i_old = model.alpha[0, i]
+                    alpha_j_old = model.alpha[0, j]
+                    
                     if eta < 0:
                         a2 = alpha_j_old - model.train_y[0, j] * (Ei - Ej) / eta
                         if a2 < L:

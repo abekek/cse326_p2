@@ -5,7 +5,6 @@
 import numpy as np
 from sklearn.metrics.pairwise  import euclidean_distances
 
-
 def linear_kernel(X1, X2):
     
     """
@@ -36,8 +35,6 @@ def linear_kernel(X1, X2):
             for j in range(m2):
                 K[i, j] = np.dot(X1[:, i], X2[:, j])
     return K
-    
-
 
 
 def Gaussian_kernel(X1, X2, sigma=1):
@@ -69,9 +66,8 @@ def Gaussian_kernel(X1, X2, sigma=1):
     if m1 == 1 and m2 == 1:
         K = np.exp(-euclidean_distances(X1.T, X2.T) ** 2 / (2 * sigma ** 2))
     else:
-        for i in range(m1):
-            for j in range(m2):
-                K[i, j] = np.exp(-euclidean_distances(X1[:, i].reshape(1, -1), X2[:, j].reshape(1, -1)) ** 2 / (2 * sigma ** 2))
+        K = [[np.exp(-euclidean_distances(X1[:, i].reshape(1, -1), X2[:, j].reshape(1, -1)) ** 2 / (2 * sigma ** 2)) for j in range(m2)] for i in range(m1)]
+        K = np.array(K).reshape(m1, m2)
     return K
 
 
