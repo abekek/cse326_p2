@@ -24,6 +24,8 @@ def linear_kernel(X1, X2):
     ## INSERT YOUR CODE HERE
     #########################################
 
+    X1 = np.atleast_2d(X1)
+    X2 = np.atleast_2d(X2)
     m1 = X1.shape[1]
     m2 = X2.shape[1]
     K = np.zeros((m1, m2))
@@ -59,6 +61,8 @@ def Gaussian_kernel(X1, X2, sigma=1):
     #########################################
     ## INSERT YOUR CODE HERE
     #########################################
+    X1 = np.atleast_2d(X1)
+    X2 = np.atleast_2d(X2)
     m1 = X1.shape[1]
     m2 = X2.shape[1]
     K = np.zeros((m1, m2))
