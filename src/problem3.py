@@ -39,14 +39,6 @@ class SVMModel():
         self.alpha = np.zeros((1, self.m))
         self.b = 0
 
-def get_rnd_int(a,b,z):
-        i = z
-        cnt=0
-        while i == z and cnt<1000:
-            i = np.random.randint(a,b)
-            cnt=cnt+1
-        return i
-
 def calculate_E(model, i):
     if model.kernel_func.__name__ == 'linear_kernel':
         K = model.kernel_func(model.train_X, model.train_X)
@@ -57,120 +49,6 @@ def calculate_E(model, i):
     y = np.dot(model.alpha * model.train_y, K[:, i]) + model.b
     return y - model.train_y[0, i]
 
-
-def take_step(model, i1, i2, Ej, tol):
-    if i1 == i2:
-        return False
-
-    Ei = calculate_E(model, i1)
-            
-    if model.train_y[0, i1] != model.train_y[0, i2]:
-        L = max(0, model.alpha[0, i2] - model.alpha[0, i1])
-        H = min(model.C, model.C + model.alpha[0, i2] - model.alpha[0, i1])
-    else:
-        L = max(0, model.alpha[0, i2] + model.alpha[0, i1] - model.C)
-        H = min(model.C, model.alpha[0, i2] + model.alpha[0, i1])
-    
-    if L == H:
-        return False
-
-    k11, k12, k22 = 0, 0, 0
-    
-    if model.kernel_func.__name__ == 'linear_kernel':
-        k11 = model.kernel_func(model.train_X, model.train_X)[i1, i1]
-        k12 = model.kernel_func(model.train_X, model.train_X)[i1, i2]
-        k22 = model.kernel_func(model.train_X, model.train_X)[i2, i2]
-    elif model.kernel_func.__name__ == 'Gaussian_kernel':
-        k11 = model.kernel_func(model.train_X, model.train_X, model.sigma)[i1, i1]
-        k12 = model.kernel_func(model.train_X, model.train_X, model.sigma)[i1, i2]
-        k22 = model.kernel_func(model.train_X, model.train_X, model.sigma)[i2, i2]
-    
-    eta = 2.0 * k12 - k11 - k22
-
-    alpha_i_old = model.alpha[0, i1]
-    alpha_j_old = model.alpha[0, i2]
-    
-    if eta < 0:
-        a2 = alpha_j_old - model.train_y[0, i2] * (Ei - Ej) / eta
-        if a2 < L:
-            a2 = L
-        elif a2 > H:
-            a2 = H
-    else:
-        f1 = model.train_y[0, i1] * (Ei + model.b) - model.alpha[0, i1] * k11 - model.train_y[0, i2] * model.alpha[0, i2] * k12
-        f2 = model.train_y[0, i2] * (Ej + model.b) - model.alpha[0, i2] * k22 - model.train_y[0, i1] * model.alpha[0, i1] * k12
-        L1 = model.alpha[0, i1] + model.alpha[0, i2] - H
-        H1 = model.alpha[0, i1] + model.alpha[0, i2] - L
-        Lobj = L1 * f1 + L * f2 + 0.5 * L1 * L1 * k11 + 0.5 * L * L * k22 + L * L1 * k12
-        Hobj = H1 * f1 + H * f2 + 0.5 * H1 * H1 * k11 + 0.5 * H * H * k22 + H * H1 * k12
-        if Lobj < Hobj - tol:
-            a2 = H
-        elif Lobj > Hobj + tol:
-            a2 = L
-        else:
-            a2 = model.alpha[0, i2]
-        print('test')
-    
-    if a2 < 1e-8:
-        a2 = 0
-    elif a2 > model.C - 1e-8:
-        a2 = model.C
-    
-    if abs(a2 - alpha_j_old) < tol * (a2 + alpha_j_old + tol):
-        return False
-    
-    a1 = alpha_i_old + model.train_y[0, i1] * model.train_y[0, i2] * (alpha_j_old - a2)
-    b1 = model.b - Ei - model.train_y[0, i1] * (a1 - alpha_i_old) * k11 - model.train_y[0, i2] * (a2 - alpha_j_old) * k12
-    b2 = model.b - Ej - model.train_y[0, i1] * (a1 - alpha_i_old) * k12 - model.train_y[0, i2] * (a2 - alpha_j_old) * k22
-    
-    if 0 < a1 < model.C:
-        model.b = b1
-    elif 0 < a2 < model.C:
-        model.b = b2
-    else:
-        model.b = (b1 + b2) / 2.0
-    
-    model.alpha[0, i1] = a1
-    model.alpha[0, i2] = a2
-    # print('i: ', i1)
-    return True
-
-def examine_example(model, i2, tol, max_passes):
-    y2 = model.train_y[0, i2]
-    alpha2 = model.alpha[0, i2]
-    E2 = calculate_E(model, i2)
-    r2 = E2 * y2
-    passes = 0
-    if (r2 < -tol and alpha2 < model.C) or (r2 > tol and alpha2 > 0):
-        # if number of non-zero and non-C alpha's > 1
-        # if len(model.alpha[model.alpha != 0]) + len(model.alpha[model.alpha != model.C]) > 1:
-        if len(model.alpha[model.alpha != 0]) > 1 and len(model.alpha[model.alpha != model.C]) > 1:
-            # i1 = get_rnd_int(0, model.m, i2)
-            i1 = np.random.randint(0, model.m - 1)
-            if take_step(model, i1, i2, E2, tol):
-                return 1
-        
-        # # loop over all non-zero and non-C alpha, starting at a random point
-        # non_zero = np.where(model.alpha != 0)[1]
-        # # print(non_zero)
-        # non_C = np.where(model.alpha != model.C)[1]
-        # rnd = np.random.permutation(non_zero)
-        # for i1 in rnd:
-        #     if take_step(model, i1, i2, E2, tol):
-        #         return 1
-        
-        # rnd = np.random.permutation(non_C)
-        # for i1 in rnd:
-        #     if take_step(model, i1, i2, E2, tol):
-        #         return 1
-        
-        # loop over all possible i1, starting at a random point
-        rnd = np.random.permutation(model.m)
-        for i1 in rnd:
-            if take_step(model, i1, i2, E2, tol):
-                return 1
-    return 0
-    
 
 def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
     """
@@ -191,36 +69,109 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
     primal_objectives = []
     models = []
 
+    if model.kernel_func.__name__ == 'linear_kernel':
+        k = model.kernel_func(model.train_X, model.train_X)
+    elif model.kernel_func.__name__ == 'Gaussian_kernel':
+        k = model.kernel_func(model.train_X, model.train_X, model.sigma)
+
     for t in range(max_iters):    
         num_changed_alphas = 0
-        examineAll = True
-        print('iteration: ', t)
         passes = 0
-
+        print('iteration: ', t)
+        # while (num_changed_alphas == 0):
         while passes < max_passes:
-            while(num_changed_alphas > 0 or examineAll):
-                num_changed_alphas = 0
-                if examineAll:
-                    for i in range(model.train_X.shape[1]):
-                        new_num_alpha = examine_example(model, i, tol, max_passes)
-                        num_changed_alphas += new_num_alpha
-                        if new_num_alpha == 0:
-                            passes += 1
-                        else:
-                            passes = 0
+            # print('max_passes: ', max_passes)
+            num_changed_alphas = 0
+            print('passes: ', passes)
+            for i in range(model.m):
+                # Ei = calculate_E(model, i)
+                Ei = np.dot(model.alpha * model.train_y, k[:, i]) + model.b - model.train_y[0, i]
+                ri = model.train_y[0, i] * Ei
+
+                if (model.alpha[0, i] == 0 and ri == 1):
+                    if (model.alpha[0, i] > 0 and model.alpha[0, i] < model.C and ri == 1):
+                        if (model.alpha[0, i] == model.C and ri < 1):
+                            continue
+                    
+                j = np.random.randint(0, model.m)
+                while j == i:
+                    j = np.random.randint(0, model.m)
+                # Ej = calculate_E(model, j)
+                Ej = np.dot(model.alpha * model.train_y, k[:, j]) + model.b - model.train_y[0, j]
+
+                if model.train_y[0, i] != model.train_y[0, j]:
+                    L = max(0, model.alpha[0, j] - model.alpha[0, i])
+                    H = min(model.C, model.C + model.alpha[0, j] - model.alpha[0, i])
                 else:
-                    for i in range(model.train_X.shape[1]):
-                        if model.alpha[0, i] > 0 and model.alpha[0, i] < model.C:
-                            new_num_alpha = examine_example(model, i, tol, max_passes)
-                            num_changed_alphas += new_num_alpha
-                            if new_num_alpha == 0:
-                                passes += 1
-                            else:
-                                passes = 0
-                if examineAll:
-                    examineAll = False
-                elif num_changed_alphas == 0:
-                    examineAll = True
+                    L = max(0, model.alpha[0, j] + model.alpha[0, i] - model.C)
+                    H = min(model.C, model.alpha[0, j] + model.alpha[0, i])
+                if L == H:
+                    continue
+                
+                if model.kernel_func.__name__ == 'linear_kernel':
+                    # k = model.kernel_func(model.train_X, model.train_X)
+                    k11 = k[i, i]
+                    k12 = k[i, j]
+                    k22 = k[j, j]
+                elif model.kernel_func.__name__ == 'Gaussian_kernel':
+                    # k = model.kernel_func(model.train_X, model.train_X, model.sigma)
+                    k11 = k[i, i]
+                    k12 = k[i, j]
+                    k22 = k[j, j]
+                
+                eta = 2.0 * k12 - k11 - k22
+
+                alpha_i_old = model.alpha[0, i]
+                alpha_j_old = model.alpha[0, j]
+                
+                if eta < 0:
+                    a2 = alpha_j_old - model.train_y[0, j] * (Ei - Ej) / eta
+                    if a2 < L:
+                        a2 = L
+                    elif a2 > H:
+                        a2 = H
+                else:
+                    f1 = model.train_y[0, i] * (Ei + model.b) - model.alpha[0, i] * k11 - model.train_y[0, j] * model.alpha[0, j] * k12
+                    f2 = model.train_y[0, j] * (Ej + model.b) - model.alpha[0, j] * k22 - model.train_y[0, i] * model.alpha[0, i] * k12
+                    L1 = model.alpha[0, i] + model.alpha[0, j] - H
+                    H1 = model.alpha[0, i] + model.alpha[0, j] - L
+                    Lobj = L1 * f1 + L * f2 + 0.5 * L1 * L1 * k11 + 0.5 * L * L * k22 + L * L1 * k12
+                    Hobj = H1 * f1 + H * f2 + 0.5 * H1 * H1 * k11 + 0.5 * H * H * k22 + H * H1 * k12
+                    if Lobj < Hobj - tol:
+                        a2 = L
+                    elif Lobj > Hobj + tol:
+                        a2 = H
+                    else:
+                        a2 = model.alpha[0, j]
+                
+                if a2 < 1e-8:
+                    a2 = 0
+                elif a2 > model.C - 1e-8:
+                    a2 = model.C
+                
+                if abs(a2 - alpha_j_old) < tol * (a2 + alpha_j_old + tol):
+                    continue
+                
+                a1 = alpha_i_old + model.train_y[0, i] * model.train_y[0, j] * (alpha_j_old - a2)
+                b1 = model.b - Ei - model.train_y[0, i] * (a1 - alpha_i_old) * k11 - model.train_y[0, j] * (a2 - alpha_j_old) * k12
+                b2 = model.b - Ej - model.train_y[0, i] * (a1 - alpha_i_old) * k12 - model.train_y[0, j] * (a2 - alpha_j_old) * k22
+                
+                if 0 < a1 < model.C:
+                    model.b = b1
+                elif 0 < a2 < model.C:
+                    model.b = b2
+                else:
+                    model.b = (b1 + b2) / 2.0
+                
+                model.alpha[0, i] = a1
+                model.alpha[0, j] = a2
+                num_changed_alphas += 1
+                print('i: ', i)
+
+            if num_changed_alphas == 0:
+                passes += 1
+            else:
+                passes = 0
 
         dual_objective = dual_objective_function(model.alpha, model.train_y, model.train_X, model.kernel_func, model.C)
         primal_objective = primal_objective_function(model.alpha, model.train_y, model.train_X, model.b, model.C, model.kernel_func, model.sigma)
@@ -232,7 +183,7 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
             primal_objectives.append(primal_objective)
             models.append(copy.deepcopy(model))
         
-    return iteration_numbers, dual_objectives, primal_objectives, models
+    return iteration_numbers, dual_objectives, primal_objectives, models  
 
 
 def predict(model, test_X):

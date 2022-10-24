@@ -4,6 +4,8 @@
 
 import numpy as np
 from sklearn.metrics.pairwise  import euclidean_distances
+from scipy.spatial.distance import pdist, squareform
+import scipy
 
 def sparse_dot_product(id1, val1, id2, val2):
     p1, p2, dot = 0, 0, 0
@@ -83,6 +85,7 @@ def Gaussian_kernel(X1, X2, sigma=1):
     else:
         K = [[np.exp(-euclidean_distances(X1[:, i].reshape(1, -1), X2[:, j].reshape(1, -1)) ** 2 / (2 * sigma ** 2)) for j in range(m2)] for i in range(m1)]
         K = np.array(K).reshape(m1, m2)
+
     return K
 
 
