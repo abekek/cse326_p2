@@ -149,18 +149,21 @@ def examine_example(model, i2, tol, max_passes):
             i1 = np.random.randint(0, model.m - 1)
             if take_step(model, i1, i2, E2, tol):
                 return 1
-        # loop over all non-zero and non-C alpha, starting at a random point
-        non_zero = np.where(model.alpha != 0)[1]
-        # print(non_zero)
-        non_C = np.where(model.alpha != model.C)[1]
-        rnd = np.random.permutation(non_zero)
-        for i1 in rnd:
-            if take_step(model, i1, i2, E2, tol):
-                return 1
-        rnd = np.random.permutation(non_C)
-        for i1 in rnd:
-            if take_step(model, i1, i2, E2, tol):
-                return 1
+        
+        # # loop over all non-zero and non-C alpha, starting at a random point
+        # non_zero = np.where(model.alpha != 0)[1]
+        # # print(non_zero)
+        # non_C = np.where(model.alpha != model.C)[1]
+        # rnd = np.random.permutation(non_zero)
+        # for i1 in rnd:
+        #     if take_step(model, i1, i2, E2, tol):
+        #         return 1
+        
+        # rnd = np.random.permutation(non_C)
+        # for i1 in rnd:
+        #     if take_step(model, i1, i2, E2, tol):
+        #         return 1
+        
         # loop over all possible i1, starting at a random point
         rnd = np.random.permutation(model.m)
         for i1 in rnd:
@@ -192,31 +195,32 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
         num_changed_alphas = 0
         examineAll = True
         print('iteration: ', t)
+        passes = 0
 
-        while(num_changed_alphas > 0 or examineAll):
-            num_changed_alphas = 0
-            passes = 0
-            if examineAll:
-                for i in range(model.train_X.shape[1]):
-                    new_num_alpha = examine_example(model, i, tol, max_passes)
-                    num_changed_alphas += new_num_alpha
-                    # if new_num_alpha == 0:
-                    #     passes += 1
-                    # if passes > max_passes:
-                    #     break
-            else:
-                for i in range(model.train_X.shape[1]):
-                    if model.alpha[0, i] > 0 and model.alpha[0, i] < model.C:
+        while passes < max_passes:
+            while(num_changed_alphas > 0 or examineAll):
+                num_changed_alphas = 0
+                if examineAll:
+                    for i in range(model.train_X.shape[1]):
                         new_num_alpha = examine_example(model, i, tol, max_passes)
                         num_changed_alphas += new_num_alpha
-                        # if new_num_alpha == 0:
-                        #     passes += 1
-                        # if passes > max_passes:
-                        #     break
-            if examineAll:
-                examineAll = False
-            elif num_changed_alphas == 0:
-                examineAll = True
+                        if new_num_alpha == 0:
+                            passes += 1
+                        else:
+                            passes = 0
+                else:
+                    for i in range(model.train_X.shape[1]):
+                        if model.alpha[0, i] > 0 and model.alpha[0, i] < model.C:
+                            new_num_alpha = examine_example(model, i, tol, max_passes)
+                            num_changed_alphas += new_num_alpha
+                            if new_num_alpha == 0:
+                                passes += 1
+                            else:
+                                passes = 0
+                if examineAll:
+                    examineAll = False
+                elif num_changed_alphas == 0:
+                    examineAll = True
 
         dual_objective = dual_objective_function(model.alpha, model.train_y, model.train_X, model.kernel_func, model.C)
         primal_objective = primal_objective_function(model.alpha, model.train_y, model.train_X, model.b, model.C, model.kernel_func, model.sigma)
