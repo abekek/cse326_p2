@@ -39,17 +39,6 @@ class SVMModel():
         self.alpha = np.zeros((1, self.m))
         self.b = 0
 
-def calculate_E(model, i):
-    if model.kernel_func.__name__ == 'linear_kernel':
-        K = model.kernel_func(model.train_X, model.train_X)
-    elif model.kernel_func.__name__ == 'Gaussian_kernel':
-        K = model.kernel_func(model.train_X, model.train_X, model.sigma)
-    else:
-        raise ValueError('Unknown kernel function')
-    y = np.dot(model.alpha * model.train_y, K[:, i]) + model.b
-    return y - model.train_y[0, i]
-
-
 def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
     """
     SMO training of SVM
@@ -78,13 +67,10 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
         num_changed_alphas = 0
         passes = 0
         print('iteration: ', t)
-        # while (num_changed_alphas == 0):
         while passes < max_passes:
-            # print('max_passes: ', max_passes)
             num_changed_alphas = 0
             print('passes: ', passes)
             for i in range(model.m):
-                # Ei = calculate_E(model, i)
                 Ei = np.dot(model.alpha * model.train_y, k[:, i]) + model.b - model.train_y[0, i]
                 ri = model.train_y[0, i] * Ei
 
@@ -96,7 +82,6 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
                 j = np.random.randint(0, model.m)
                 while j == i:
                     j = np.random.randint(0, model.m)
-                # Ej = calculate_E(model, j)
                 Ej = np.dot(model.alpha * model.train_y, k[:, j]) + model.b - model.train_y[0, j]
 
                 if model.train_y[0, i] != model.train_y[0, j]:
@@ -109,12 +94,10 @@ def train(model, max_iters = 10, record_every = 1, max_passes = 1, tol=1e-6):
                     continue
                 
                 if model.kernel_func.__name__ == 'linear_kernel':
-                    # k = model.kernel_func(model.train_X, model.train_X)
                     k11 = k[i, i]
                     k12 = k[i, j]
                     k22 = k[j, j]
                 elif model.kernel_func.__name__ == 'Gaussian_kernel':
-                    # k = model.kernel_func(model.train_X, model.train_X, model.sigma)
                     k11 = k[i, i]
                     k12 = k[i, j]
                     k22 = k[j, j]

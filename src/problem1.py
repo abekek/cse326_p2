@@ -7,20 +7,6 @@ from sklearn.metrics.pairwise  import euclidean_distances
 from scipy.spatial.distance import pdist, squareform
 import scipy
 
-def sparse_dot_product(id1, val1, id2, val2):
-    p1, p2, dot = 0, 0, 0
-    while p1 < len(id1) and p2 < len(id2):
-        a1, a2 = id1[p1], id2[p2]
-        if a1 == a2:
-            dot += val1[p1] * val2[p2]
-            p1 += 1
-            p2 += 1
-        elif a1 < a2:
-            p1 += 1
-        else:
-            p2 += 1
-    return dot
-
 
 def linear_kernel(X1, X2):
     
